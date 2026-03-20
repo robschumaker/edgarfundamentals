@@ -1,0 +1,156 @@
+---
+title: "Fundamental Analysis with edgarfundamentals"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Fundamental Analysis with edgarfundamentals}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  eval     = FALSE
+)
+```
+
+## Overview
+
+`edgarfundamentals` provides a simple, ticker-based interface for retrieving
+fundamental financial ratios directly from SEC EDGAR 10-K filings. No API key
+or paid subscription is required. All data comes from the SEC's official XBRL
+API at `data.sec.gov`, which is free, stable, and government-maintained.
+
+The package provides four functions:
+
+- `get_cik()` -- translates a ticker to its SEC Central Index Key
+- `get_fundamentals()` -- retrieves ratios for a single stock
+- `get_fundamentals_batch()` -- retrieves ratios for a portfolio of stocks
+- `get_filing_history()` -- retrieves recent SEC filing history for a stock
+
+## Setup
+
+Before making any API calls, set your User-Agent string. The SEC requests that
+automated tools identify themselves so they can contact you if your scripts
+cause issues with their servers.
+
+```{r user-agent}
+library(edgarfundamentals)
+
+options(edgarfundamentals.user_agent = "Jane Smith jane@example.com")
+```
+
+Replace the name and email with your own. You only need to do this once per R
+session.
+
+## Looking Up a CIK
+
+Every EDGAR API call requires a CIK number. `get_cik()` handles this
+translation automatically inside the other functions, but you can call it
+directly if you need the CIK for other purposes.
+
+```{r get-cik}
+get_cik("LLY")   # Eli Lilly
+get_cik("LMT")   # Lockheed Martin
+```
+
+## Fundamentals for a Single Stock
+
+`get_fundamentals()` returns a named vector of five key ratios derived from
+the most recent 10-K filing on or before `to_date`.
+
+```{r single}
+get_fundamentals("LLY", to_date = "2024-12-31")
+```
+
+The returned vector contains:
+
+| Name | Description |
+|------|-------------|
+| `CIK` | SEC Central Index Key |
+| `EPS` | Diluted Earnings Per Share (USD) |
+| `NetIncome` | Net Income (USD) |
+| `ROE` | Return on Equity (%) |
+| `DE` | Debt-to-Equity ratio |
+| `PE` | Price-to-Earnings ratio |
+
+Because ratios come from annual 10-K filings, they reflect the most recently
+completed fiscal year -- not real-time values. The PE ratio is the only
+computed value that uses a live market price (via Yahoo Finance), so it will
+change daily even when the underlying 10-K data does not.
+
+## Fundamentals for a Portfolio
+
+`get_fundamentals_batch()` accepts a vector of tickers and returns a tidy data
+frame with one row per stock. If retrieval fails for any ticker, that row
+contains `NA` values and a message is printed -- the batch continues rather
+than stopping.
+
+```{r batch}
+healthcare <- c("UNH", "PFE", "MRK", "ABT", "LLY", "CVS", "AMGN")
+defense    <- c("LMT", "RTX", "NOC", "GD",  "HII", "LHX", "LDOS")
+
+healthcare.fund <- get_fundamentals_batch(healthcare, to_date = "2024-12-31")
+defense.fund    <- get_fundamentals_batch(defense,    to_date = "2024-12-31")
+
+healthcare.fund
+defense.fund
+```
+
+Expect retrieval to take approximately 20--30 seconds for 14 stocks. A 0.5
+second pause is inserted after each API call to respect the SEC rate limit.
+
+## Screening by Fundamental Criteria
+
+Once you have the data frame, standard `dplyr` operations apply directly.
+
+```{r screening}
+library(dplyr)
+
+# Growth screen: EPS growth is not returned directly, but high EPS stocks
+# relative to peers signal strong earnings
+healthcare.fund |> arrange(desc(EPS))
+
+# Value screen: low PE stocks trading cheaply relative to earnings
+defense.fund |> filter(PE < 20) |> select(symbol, PE, DE, ROE)
+
+# GARP screen (Growth at a Reasonable Price): PE below EPS
+# Stocks where the market is not overcharging for growth
+healthcare.fund |> filter(EPS > 0 & PE < EPS) |> select(symbol, PE, EPS)
+
+# High leverage screen: DE above 2 signals significant debt burden
+bind_rows(healthcare.fund, defense.fund) |>
+  filter(DE > 2) |>
+  arrange(desc(DE)) |>
+  select(symbol, DE, ROE)
+```
+
+## Checking Filing History
+
+`get_filing_history()` retrieves recent EDGAR filings for a company, which is
+useful for verifying data availability or for finding the accession numbers
+needed to access the full text of specific reports.
+
+```{r filing-history}
+# Five most recent annual reports for Lockheed Martin
+get_filing_history("LMT", form_type = "10-K", n = 5)
+
+# Four most recent quarterly reports for Eli Lilly
+get_filing_history("LLY", form_type = "10-Q", n = 4)
+```
+
+## A Note on Data Limitations
+
+EDGAR XBRL data is only as good as what companies report. A small number of
+companies use non-standard XBRL tag names for common concepts. The package
+automatically tries fallback tags when the primary tag returns no data, but
+in rare cases a ratio may still be `NA`. When this occurs, verifying the
+company's most recent 10-K directly on `edgar.sec.gov` will confirm whether
+the data exists under a different tag name.
+
+Additionally, EDGAR does not provide market-based ratios such as
+Price-to-Book directly -- the book value of equity comes from EDGAR but the
+current share price comes from Yahoo Finance via `tidyquant`. This means the
+PE ratio reflects today's price against last year's earnings, which is the
+standard trailing PE definition used in practice.
