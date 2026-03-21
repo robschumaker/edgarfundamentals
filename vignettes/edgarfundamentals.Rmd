@@ -57,8 +57,8 @@ get_cik("LMT")   # Lockheed Martin
 
 ## Fundamentals for a Single Stock
 
-`get_fundamentals()` returns a named vector of five key ratios derived from
-the most recent 10-K filing on or before `to_date`.
+`get_fundamentals()` returns a named vector of key financial ratios derived
+from the most recent 10-K filing on or before `to_date`.
 
 ```{r single}
 get_fundamentals("LLY", to_date = "2024-12-31")
@@ -71,9 +71,17 @@ The returned vector contains:
 | `CIK` | SEC Central Index Key |
 | `EPS` | Diluted Earnings Per Share (USD) |
 | `NetIncome` | Net Income (USD) |
+| `Revenue` | Total Revenue (USD) |
 | `ROE` | Return on Equity (%) |
+| `ROA` | Return on Assets (%) |
 | `DE` | Debt-to-Equity ratio |
+| `CurrentRatio` | Current Assets / Current Liabilities |
+| `GrossMargin` | Gross Profit as a percentage of Revenue (%) |
+| `OperatingMargin` | Operating Income as a percentage of Revenue (%) |
+| `NetMargin` | Net Income as a percentage of Revenue (%) |
 | `PE` | Price-to-Earnings ratio |
+| `PB` | Price-to-Book ratio |
+| `DIV` | Dividend Yield (%) |
 
 Because ratios come from annual 10-K filings, they reflect the most recently
 completed fiscal year -- not real-time values. The PE ratio is the only
@@ -108,22 +116,28 @@ Once you have the data frame, standard `dplyr` operations apply directly.
 ```{r screening}
 library(dplyr)
 
-# Growth screen: EPS growth is not returned directly, but high EPS stocks
-# relative to peers signal strong earnings
+# Growth screen: high EPS stocks relative to peers signal strong earnings
 healthcare.fund |> arrange(desc(EPS))
 
-# Value screen: low PE stocks trading cheaply relative to earnings
-defense.fund |> filter(PE < 20) |> select(symbol, PE, DE, ROE)
+# Value screen: low PE and low PB suggest the market is pricing the stock cheaply
+# High dividend yield is also characteristic of value stocks
+defense.fund |> filter(PE < 20 & PB < 3) |> select(symbol, PE, PB, DIV, ROE)
 
 # GARP screen (Growth at a Reasonable Price): PE below EPS
 # Stocks where the market is not overcharging for growth
 healthcare.fund |> filter(EPS > 0 & PE < EPS) |> select(symbol, PE, EPS)
 
-# High leverage screen: DE above 2 signals significant debt burden
+# Profitability screen: strong margins signal pricing power and operational efficiency
 bind_rows(healthcare.fund, defense.fund) |>
-  filter(DE > 2) |>
-  arrange(desc(DE)) |>
-  select(symbol, DE, ROE)
+  filter(GrossMargin > 40 & OperatingMargin > 15) |>
+  arrange(desc(NetMargin)) |>
+  select(symbol, GrossMargin, OperatingMargin, NetMargin, ROA)
+
+# Liquidity screen: current ratio above 1.5 and low leverage
+bind_rows(healthcare.fund, defense.fund) |>
+  filter(CurrentRatio > 1.5 & DE < 1) |>
+  arrange(desc(CurrentRatio)) |>
+  select(symbol, CurrentRatio, DE, ROE)
 ```
 
 ## Checking Filing History
@@ -149,8 +163,8 @@ in rare cases a ratio may still be `NA`. When this occurs, verifying the
 company's most recent 10-K directly on `edgar.sec.gov` will confirm whether
 the data exists under a different tag name.
 
-Additionally, EDGAR does not provide market-based ratios such as
-Price-to-Book directly -- the book value of equity comes from EDGAR but the
-current share price comes from Yahoo Finance via `tidyquant`. This means the
-PE ratio reflects today's price against last year's earnings, which is the
-standard trailing PE definition used in practice.
+Additionally, EDGAR does not provide market-based ratios directly. Price-to-Book
+and Dividend Yield both require a current share price, which comes from Yahoo
+Finance via `tidyquant`. This means PE, PB, and DIV all reflect today's price
+against the most recent annual filing data, which is standard practice for
+trailing ratios.

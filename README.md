@@ -13,7 +13,7 @@ key or paid subscription is required.
 install.packages("edgarfundamentals")
 
 # Development version
-devtools::install_github("rschumaker/edgarfundamentals")
+devtools::install_github("robschumaker/edgarfundamentals")
 ```
 
 ## Setup
@@ -48,7 +48,27 @@ healthcare <- c("UNH", "PFE", "MRK", "ABT", "LLY", "CVS", "AMGN")
 get_fundamentals_batch(healthcare, to_date = "2024-12-31")
 ```
 
-## Notes for Building and Submission
+## Ratios Returned
+
+`get_fundamentals()` and `get_fundamentals_batch()` return the following:
+
+| Ratio | Description | Source |
+|-------|-------------|--------|
+| `EPS` | Diluted Earnings Per Share (USD) | EDGAR |
+| `NetIncome` | Net Income (USD) | EDGAR |
+| `Revenue` | Total Revenue (USD) | EDGAR |
+| `ROE` | Return on Equity (%) | EDGAR |
+| `ROA` | Return on Assets (%) | EDGAR |
+| `DE` | Debt-to-Equity ratio | EDGAR |
+| `CurrentRatio` | Current Assets / Current Liabilities | EDGAR |
+| `GrossMargin` | Gross Profit as % of Revenue | EDGAR |
+| `OperatingMargin` | Operating Income as % of Revenue | EDGAR |
+| `NetMargin` | Net Income as % of Revenue | EDGAR |
+| `PE` | Price-to-Earnings ratio | EDGAR + Yahoo |
+| `PB` | Price-to-Book ratio | EDGAR + Yahoo |
+| `DIV` | Dividend Yield (%) | EDGAR + Yahoo |
+
+
 
 After cloning, generate documentation and check the package before submission:
 
@@ -65,8 +85,8 @@ is not tracked in version control.
 
 All financial statement data comes from the SEC EDGAR XBRL API
 (`data.sec.gov`), specifically the `companyfacts` endpoint. Ratios reflect
-the most recently completed fiscal year from 10-K filings. The PE ratio
-additionally uses current market prices from Yahoo Finance via `tidyquant`.
+the most recently completed fiscal year from 10-K filings. PE, PB, and DIV
+additionally use current market prices from Yahoo Finance via `tidyquant`.
 
 ## License
 

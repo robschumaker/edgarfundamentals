@@ -12,9 +12,12 @@
 #'   date.
 #'
 #' @return A data frame with one row per symbol and the following columns:
-#'   \code{symbol}, \code{CIK}, \code{EPS}, \code{NetIncome}, \code{ROE},
-#'   \code{DE}, \code{PE}. See \code{\link{get_fundamentals}} for definitions.
-#'   Rows where data retrieval failed contain \code{NA} for all ratio columns.
+#'   \code{symbol}, \code{CIK}, \code{EPS}, \code{NetIncome}, \code{Revenue},
+#'   \code{ROE}, \code{ROA}, \code{DE}, \code{CurrentRatio},
+#'   \code{GrossMargin}, \code{OperatingMargin}, \code{NetMargin},
+#'   \code{PE}, \code{PB}, \code{DIV}. See \code{\link{get_fundamentals}}
+#'   for definitions. Rows where data retrieval failed contain \code{NA}
+#'   for all ratio columns.
 #'
 #' @details
 #' Each symbol requires two SEC EDGAR API calls (one for the CIK lookup and
@@ -41,8 +44,13 @@
 #' @export
 get_fundamentals_batch <- function(symbols, to_date = as.character(Sys.Date())) {
 
-  na_row <- c(CIK = NA_real_, EPS = NA_real_, NetIncome = NA_real_,
-              ROE = NA_real_, DE  = NA_real_, PE  = NA_real_)
+  na_row <- c(CIK             = NA_real_, EPS             = NA_real_,
+              NetIncome       = NA_real_, Revenue         = NA_real_,
+              ROE             = NA_real_, ROA             = NA_real_,
+              DE              = NA_real_, CurrentRatio    = NA_real_,
+              GrossMargin     = NA_real_, OperatingMargin = NA_real_,
+              NetMargin       = NA_real_, PE              = NA_real_,
+              PB              = NA_real_, DIV             = NA_real_)
 
   results <- lapply(symbols, function(sym) {
     tryCatch(

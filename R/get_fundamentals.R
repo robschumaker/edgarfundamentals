@@ -1,8 +1,8 @@
 #' Retrieve key fundamental financial ratios for a single stock
 #'
 #' Pulls fundamental financial data directly from a company's most recent
-#' annual 10-K filing in SEC EDGAR and computes five key ratios. No API key
-#' or paid subscription is required.
+#' annual 10-K filing in SEC EDGAR and computes key financial ratios. No API
+#' key or paid subscription is required.
 #'
 #' @param symbol A character string containing the stock ticker symbol
 #'   (e.g. \code{"LLY"}). Case-insensitive.
@@ -16,14 +16,32 @@
 #'   \item{EPS}{Diluted Earnings Per Share (USD per share) from the most recent
 #'     qualifying 10-K. Falls back to basic EPS if diluted is unavailable.}
 #'   \item{NetIncome}{Net income attributable to the company (USD).}
+#'   \item{Revenue}{Total revenue (USD).}
 #'   \item{ROE}{Return on Equity as a percentage (NetIncome / StockholdersEquity
 #'     * 100). A measure of how efficiently the company generates profit from
 #'     shareholder capital.}
+#'   \item{ROA}{Return on Assets as a percentage (NetIncome / TotalAssets
+#'     * 100). A measure of how efficiently the company uses its assets.}
 #'   \item{DE}{Debt-to-Equity ratio (LongTermDebt / StockholdersEquity). A
 #'     measure of financial leverage.}
+#'   \item{CurrentRatio}{Current Assets divided by Current Liabilities. A
+#'     measure of short-term liquidity; values above 1 indicate the company
+#'     can cover near-term obligations.}
+#'   \item{GrossMargin}{Gross Profit as a percentage of Revenue. Measures
+#'     pricing power and production efficiency.}
+#'   \item{OperatingMargin}{Operating Income as a percentage of Revenue.
+#'     Measures operational efficiency before interest and taxes.}
+#'   \item{NetMargin}{Net Income as a percentage of Revenue. Bottom-line
+#'     profitability after all expenses.}
 #'   \item{PE}{Price-to-Earnings ratio, computed by dividing the most recent
-#'     adjusted closing price (from Yahoo Finance via tidyquant) by EPS. Returns
-#'     \code{NA} if EPS is zero or negative.}
+#'     adjusted closing price (from Yahoo Finance via tidyquant) by EPS.
+#'     Returns \code{NA} if EPS is zero or negative.}
+#'   \item{PB}{Price-to-Book ratio, computed by dividing the most recent
+#'     adjusted closing price by Book Value per Share (StockholdersEquity /
+#'     SharesOutstanding). Returns \code{NA} if shares outstanding is zero
+#'     or unavailable.}
+#'   \item{DIV}{Dividend Yield as a percentage (DividendsPerShareDeclared /
+#'     Price * 100). Returns \code{NA} if no dividend data is available.}
 #' }
 #'
 #' @details
@@ -80,6 +98,11 @@ get_fundamentals <- function(symbol, to_date = as.character(Sys.Date())) {
                            fallback_tags = c("ProfitLoss", "NetIncome"),
                            unit = "USD", to_date = to_date)
 
+  revenue    <- latest_10k(facts, "RevenueFromContractWithCustomerExcludingAssessedTax",
+                           fallback_tags = c("Revenues", "SalesRevenueNet",
+                                             "SalesRevenueGoodsNet"),
+                           unit = "USD", to_date = to_date)
+
   equity     <- latest_10k(facts, "StockholdersEquity",
                            fallback_tags = "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest",
                            unit = "USD", to_date = to_date)
@@ -88,26 +111,81 @@ get_fundamentals <- function(symbol, to_date = as.character(Sys.Date())) {
                            fallback_tags = c("LongTermDebtNoncurrent", "LongTermNotesPayable"),
                            unit = "USD", to_date = to_date)
 
+  assets     <- latest_10k(facts, "Assets",
+                           unit = "USD", to_date = to_date)
+
+  current.assets <- latest_10k(facts, "AssetsCurrent",
+                                unit = "USD", to_date = to_date)
+
+  current.liab   <- latest_10k(facts, "LiabilitiesCurrent",
+                                unit = "USD", to_date = to_date)
+
+  gross.profit   <- latest_10k(facts, "GrossProfit",
+                                unit = "USD", to_date = to_date)
+
+  operating.inc  <- latest_10k(facts, "OperatingIncomeLoss",
+                                unit = "USD", to_date = to_date)
+
+  shares.out     <- latest_10k(facts, "CommonStockSharesOutstanding",
+                                fallback_tags = c("CommonStockSharesIssuedAndOutstanding",
+                                                  "EntityCommonStockSharesOutstanding"),
+                                unit = "shares", to_date = to_date)
+
+  div.per.share  <- latest_10k(facts, "CommonStockDividendsPerShareDeclared",
+                                fallback_tags = c("CommonStockDividendsPerShareCashPaid",
+                                                  "DividendsCommonStockCash"),
+                                unit = "USD/shares", to_date = to_date)
+
   # Compute derived ratios
   roe <- if (!is.na(net.income) && !is.na(equity) && equity != 0)
     round(net.income / equity * 100, 2) else NA_real_
 
+  roa <- if (!is.na(net.income) && !is.na(assets) && assets != 0)
+    round(net.income / assets * 100, 2) else NA_real_
+
   de  <- if (!is.na(debt) && !is.na(equity) && equity != 0)
     round(debt / equity, 2) else NA_real_
 
-  # P/E uses the most recent adjusted price from tidyquant
+  current.ratio <- if (!is.na(current.assets) && !is.na(current.liab) && current.liab != 0)
+    round(current.assets / current.liab, 2) else NA_real_
+
+  gross.margin <- if (!is.na(gross.profit) && !is.na(revenue) && revenue != 0)
+    round(gross.profit / revenue * 100, 2) else NA_real_
+
+  operating.margin <- if (!is.na(operating.inc) && !is.na(revenue) && revenue != 0)
+    round(operating.inc / revenue * 100, 2) else NA_real_
+
+  net.margin <- if (!is.na(net.income) && !is.na(revenue) && revenue != 0)
+    round(net.income / revenue * 100, 2) else NA_real_
+
+  # PE, PB, and DIV all use the most recent adjusted price from tidyquant
   prices <- suppressMessages(
     tidyquant::tq_get(symbol,
                       from = as.character(as.Date(to_date) - 7),
                       to   = as.character(to_date))
   )
   price <- if (nrow(prices) > 0) prices$adjusted[nrow(prices)] else NA_real_
-  pe    <- if (!is.na(eps) && eps > 0) round(price / eps, 2) else NA_real_
 
-  c(CIK       = as.numeric(cik),
-    EPS       = round(eps,        2),
-    NetIncome = round(net.income, 0),
-    ROE       = roe,
-    DE        = de,
-    PE        = pe)
+  pe  <- if (!is.na(eps) && eps > 0) round(price / eps, 2) else NA_real_
+
+  pb  <- if (!is.na(shares.out) && shares.out > 0 && !is.na(equity))
+    round(price / (equity / shares.out), 2) else NA_real_
+
+  div <- if (!is.na(div.per.share) && !is.na(price) && price > 0)
+    round(div.per.share / price * 100, 2) else NA_real_
+
+  c(CIK            = as.numeric(cik),
+    EPS            = round(eps,        2),
+    NetIncome      = round(net.income, 0),
+    Revenue        = round(revenue,    0),
+    ROE            = roe,
+    ROA            = roa,
+    DE             = de,
+    CurrentRatio   = current.ratio,
+    GrossMargin    = gross.margin,
+    OperatingMargin = operating.margin,
+    NetMargin      = net.margin,
+    PE             = pe,
+    PB             = pb,
+    DIV            = div)
 }

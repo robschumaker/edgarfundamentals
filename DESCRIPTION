@@ -1,6 +1,6 @@
 Package: edgarfundamentals
 Title: Retrieve Fundamental Financial Data from SEC EDGAR
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: person(
     given   = "Robert",
     family  = "Schumaker",
@@ -11,10 +11,11 @@ Description: Provides a simple, ticker-based interface for retrieving fundamenta
     financial data from the United States Securities and Exchange Commission's
     EDGAR XBRL API <https://www.sec.gov/edgar/sec-api-documentation>. Functions
     return key financial ratios including earnings per share, return on equity,
-    debt-to-equity, and price-to-earnings for any publicly traded U.S. company.
-    Data is sourced directly from company 10-K annual filings, requiring no API
-    key or paid subscription. Designed for use in quantitative finance courses
-    and research workflows.
+    return on assets, debt-to-equity, current ratio, gross margin, operating
+    margin, net margin, price-to-earnings, price-to-book, and dividend yield
+    for any publicly traded U.S. company. Data is sourced directly from company
+    10-K annual filings, requiring no API key or paid subscription. Designed for
+    use in quantitative finance courses and research workflows.
 License: MIT + file LICENSE
 Encoding: UTF-8
 RoxygenNote: 7.3.3
