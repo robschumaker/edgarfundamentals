@@ -21,20 +21,38 @@ A named numeric vector with the following elements:
   \item{EPS}{Diluted Earnings Per Share (USD per share) from the most recent
     qualifying 10-K. Falls back to basic EPS if diluted is unavailable.}
   \item{NetIncome}{Net income attributable to the company (USD).}
+  \item{Revenue}{Total revenue (USD).}
   \item{ROE}{Return on Equity as a percentage (NetIncome / StockholdersEquity
     * 100). A measure of how efficiently the company generates profit from
     shareholder capital.}
+  \item{ROA}{Return on Assets as a percentage (NetIncome / TotalAssets
+    * 100). A measure of how efficiently the company uses its assets.}
   \item{DE}{Debt-to-Equity ratio (LongTermDebt / StockholdersEquity). A
     measure of financial leverage.}
+  \item{CurrentRatio}{Current Assets divided by Current Liabilities. A
+    measure of short-term liquidity; values above 1 indicate the company
+    can cover near-term obligations.}
+  \item{GrossMargin}{Gross Profit as a percentage of Revenue. Measures
+    pricing power and production efficiency.}
+  \item{OperatingMargin}{Operating Income as a percentage of Revenue.
+    Measures operational efficiency before interest and taxes.}
+  \item{NetMargin}{Net Income as a percentage of Revenue. Bottom-line
+    profitability after all expenses.}
   \item{PE}{Price-to-Earnings ratio, computed by dividing the most recent
-    adjusted closing price (from Yahoo Finance via tidyquant) by EPS. Returns
-    \code{NA} if EPS is zero or negative.}
+    adjusted closing price (from Yahoo Finance via tidyquant) by EPS.
+    Returns \code{NA} if EPS is zero or negative.}
+  \item{PB}{Price-to-Book ratio, computed by dividing the most recent
+    adjusted closing price by Book Value per Share (StockholdersEquity /
+    SharesOutstanding). Returns \code{NA} if shares outstanding is zero
+    or unavailable.}
+  \item{DIV}{Dividend Yield as a percentage (DividendsPerShareDeclared /
+    Price * 100). Returns \code{NA} if no dividend data is available.}
 }
 }
 \description{
 Pulls fundamental financial data directly from a company's most recent
-annual 10-K filing in SEC EDGAR and computes five key ratios. No API key
-or paid subscription is required.
+annual 10-K filing in SEC EDGAR and computes key financial ratios. No API
+key or paid subscription is required.
 }
 \details{
 Financial statement values are extracted from XBRL-tagged 10-K filings via

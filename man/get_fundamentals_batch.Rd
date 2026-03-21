@@ -16,9 +16,12 @@ date.}
 }
 \value{
 A data frame with one row per symbol and the following columns:
-  \code{symbol}, \code{CIK}, \code{EPS}, \code{NetIncome}, \code{ROE},
-  \code{DE}, \code{PE}. See \code{\link{get_fundamentals}} for definitions.
-  Rows where data retrieval failed contain \code{NA} for all ratio columns.
+  \code{symbol}, \code{CIK}, \code{EPS}, \code{NetIncome}, \code{Revenue},
+  \code{ROE}, \code{ROA}, \code{DE}, \code{CurrentRatio},
+  \code{GrossMargin}, \code{OperatingMargin}, \code{NetMargin},
+  \code{PE}, \code{PB}, \code{DIV}. See \code{\link{get_fundamentals}}
+  for definitions. Rows where data retrieval failed contain \code{NA}
+  for all ratio columns.
 }
 \description{
 A vectorized wrapper around \code{\link{get_fundamentals}} that accepts a
