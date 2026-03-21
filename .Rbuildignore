@@ -1,1 +1,5 @@
 ^LICENSE\.md$
+^CRAN-SUBMISSION$
+^cran-comments\.md$
+^edgarfundamentals\.Rproj$
+^\.Rproj\.user$
