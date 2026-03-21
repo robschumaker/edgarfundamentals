@@ -1,3 +1,5 @@
+#' @importFrom rlang .data
+NULL
 # Internal helpers -- not exported
 
 # Retrieve and validate the User-Agent string from options.

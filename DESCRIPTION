@@ -22,6 +22,7 @@ Imports:
     dplyr (>= 1.1.0),
     httr (>= 1.4.0),
     jsonlite (>= 1.8.0),
+    rlang,
     tidyquant (>= 1.0.0)
 Suggests:
     knitr,
