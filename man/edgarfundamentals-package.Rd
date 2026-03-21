@@ -11,8 +11,8 @@ Provides a simple, ticker-based interface for retrieving fundamental financial d
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/rschumaker/edgarfundamentals}
-  \item Report bugs at \url{https://github.com/rschumaker/edgarfundamentals/issues}
+  \item \url{https://github.com/robschumaker/edgarfundamentals}
+  \item Report bugs at \url{https://github.com/robschumaker/edgarfundamentals/issues}
 }
 
 }

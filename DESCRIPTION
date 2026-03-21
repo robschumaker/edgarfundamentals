@@ -28,5 +28,5 @@ Suggests:
     knitr,
     rmarkdown
 VignetteBuilder: knitr
-URL: https://github.com/rschumaker/edgarfundamentals
-BugReports: https://github.com/rschumaker/edgarfundamentals/issues
+URL: https://github.com/robschumaker/edgarfundamentals
+BugReports: https://github.com/robschumaker/edgarfundamentals/issues
