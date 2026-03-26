@@ -4,9 +4,9 @@
 \name{edgarfundamentals-package}
 \alias{edgarfundamentals}
 \alias{edgarfundamentals-package}
-\title{edgarfundamentals: Retrieve Fundamental Financial Data from SEC EDGAR}
+\title{edgarfundamentals: Retrieve Fundamental Financial Data from SEC 'EDGAR'}
 \description{
-Provides a simple, ticker-based interface for retrieving fundamental financial data from the United States Securities and Exchange Commission's EDGAR XBRL API \url{https://www.sec.gov/edgar/sec-api-documentation}. Functions return key financial ratios including earnings per share, return on equity, return on assets, debt-to-equity, current ratio, gross margin, operating margin, net margin, price-to-earnings, price-to-book, and dividend yield for any publicly traded U.S. company. Data is sourced directly from company 10-K annual filings, requiring no API key or paid subscription. Designed for use in quantitative finance courses and research workflows.
+Provides a simple, ticker-based interface for retrieving fundamental financial data from the United States Securities and Exchange Commission's 'EDGAR' 'XBRL' API \url{https://www.sec.gov/edgar/sec-api-documentation}. Functions return key financial ratios including earnings per share, return on equity, return on assets, debt-to-equity, current ratio, gross margin, operating margin, net margin, price-to-earnings, price-to-book, and dividend yield for any publicly traded U.S. company. Data is sourced directly from company 10-K annual filings, requiring no API key or paid subscription. Designed for use in quantitative finance courses and research workflows.
 }
 \seealso{
 Useful links:

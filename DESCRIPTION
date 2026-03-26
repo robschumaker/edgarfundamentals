@@ -1,8 +1,8 @@
 Package: edgarfundamentals
 Title: Retrieve Fundamental Financial Data from SEC 'EDGAR'
-Version: 0.1.1
+Version: 0.1.2
 Authors@R: person(
-    given   = "Robert",
+    given   = "Robert P",
     family  = "Schumaker",
     role    = c("aut", "cre"),
     email   = "rob.schumaker@gmail.com",
