@@ -20,7 +20,6 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 RoxygenNote: 7.3.3
 Imports:
-    cli,
     dplyr (>= 1.1.0),
     httr (>= 1.4.0),
     jsonlite (>= 1.8.0),
