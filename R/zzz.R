@@ -1,9 +1,10 @@
 .onAttach <- function(libname, pkgname) {
+  ver   <- as.character(utils::packageVersion("edgarfundamentals"))
   packageStartupMessage(
-    "── \033[1mAttaching edgarfundamentals\033[0m ",
-    paste(rep("─", 40), collapse=""),
-    " edgarfundamentals ", utils::packageVersion("edgarfundamentals"), " ──\n",
-    "\033[34mSet your User-Agent before making API calls:\033[0m\n",
-    "  options(edgarfundamentals.user_agent = \"\033[34mYour Name your@email.com\033[0m\")"
+    cli::rule(left = paste("edgarfundamentals", ver)), "\n",
+    cli::col_blue("Set your User-Agent before making API calls:"), "\n",
+    "  options(edgarfundamentals.user_agent = \"",
+    cli::col_blue("Your Name your@email.com"), "\")\n",
+    cli::rule()
   )
 }
