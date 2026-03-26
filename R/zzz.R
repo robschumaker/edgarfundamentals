@@ -3,6 +3,7 @@
     left  = "{.strong Attaching edgarfundamentals}",
     right = paste0("edgarfundamentals ", utils::packageVersion("edgarfundamentals"))
   )
-  cli::cli_text("{cli::col_red('Set your User-Agent before making API calls:')}")
-  cli::cli_code(" options(edgarfundamentals.user_agent = \"Your Name your@email.com\")")
+  cli::cli_text("{cli::col_blue('Set your User-Agent before making API calls:')}")
+  cli::cli_text(paste0("\u00a0\u00a0options(edgarfundamentals.user_agent = ", cli::col_blue('"Your Name your@email.com"'), ")"))
+  cli::cli_rule()
 }
