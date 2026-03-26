@@ -17,7 +17,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Robert Schumaker \email{rob.schumaker@gmail.com} (\href{https://orcid.org/0000-0003-2977-1856}{ORCID})
+\strong{Maintainer}: Robert P Schumaker \email{rob.schumaker@gmail.com} (\href{https://orcid.org/0000-0003-2977-1856}{ORCID})
 
 }
 \keyword{internal}
