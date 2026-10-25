@@ -11,8 +11,9 @@ get_fundamentals(symbol, to_date = as.character(Sys.Date()))
 (e.g. \code{"LLY"}). Case-insensitive.}
 
 \item{to_date}{A character string in \code{"YYYY-MM-DD"} format. The
-function returns ratios from the most recent 10-K with a period end date
-on or before this date. Defaults to today's date.}
+function returns ratios from the most recent 10-K that had been
+\emph{filed} on or before this date, so results contain only information
+that was public on that date. Defaults to today's date.}
 }
 \value{
 A named numeric vector with the following elements:
@@ -27,24 +28,25 @@ A named numeric vector with the following elements:
     shareholder capital.}
   \item{ROA}{Return on Assets as a percentage (NetIncome / TotalAssets
     * 100). A measure of how efficiently the company uses its assets.}
-  \item{DE}{Debt-to-Equity ratio (LongTermDebt / StockholdersEquity). A
+  \item{DE}{Debt-to-Equity ratio (long-term debt including its current
+    portion / StockholdersEquity). A
     measure of financial leverage.}
   \item{CurrentRatio}{Current Assets divided by Current Liabilities. A
     measure of short-term liquidity; values above 1 indicate the company
     can cover near-term obligations.}
-  \item{GrossMargin}{Gross Profit as a percentage of Revenue. Measures
+  \item{GrossMargin}{Gross Profit (or Revenue minus Cost of Revenue when
+    gross profit is not tagged) as a percentage of Revenue. Measures
     pricing power and production efficiency.}
   \item{OperatingMargin}{Operating Income as a percentage of Revenue.
     Measures operational efficiency before interest and taxes.}
   \item{NetMargin}{Net Income as a percentage of Revenue. Bottom-line
     profitability after all expenses.}
-  \item{PE}{Price-to-Earnings ratio, computed by dividing the most recent
-    adjusted closing price (from Yahoo Finance via tidyquant) by EPS.
+  \item{PE}{Price-to-Earnings ratio, computed by dividing the closing price
+    on or before \code{to_date} (from Yahoo Finance via tidyquant) by EPS.
     Returns \code{NA} if EPS is zero or negative.}
-  \item{PB}{Price-to-Book ratio, computed by dividing the most recent
-    adjusted closing price by Book Value per Share (StockholdersEquity /
-    SharesOutstanding). Returns \code{NA} if shares outstanding is zero
-    or unavailable.}
+  \item{PB}{Price-to-Book ratio, computed by dividing the closing price by
+    Book Value per Share (StockholdersEquity / SharesOutstanding). Returns
+    \code{NA} if shares outstanding is unavailable or equity is negative.}
   \item{DIV}{Dividend Yield as a percentage (DividendsPerShareDeclared /
     Price * 100). Returns \code{NA} if no dividend data is available.}
 }
@@ -57,12 +59,20 @@ key or paid subscription is required.
 \details{
 Financial statement values are extracted from XBRL-tagged 10-K filings via
 the SEC EDGAR companyfacts API
-(\url{https://data.sec.gov/api/xbrl/companyfacts/}). Because data comes
-from annual filings, ratios reflect the most recently completed fiscal year
-ending on or before \code{to_date}, not real-time values.
+(\url{https://data.sec.gov/api/xbrl/companyfacts/}). Results are point in
+time: the function finds the most recent fiscal year whose 10-K was filed
+on or before \code{to_date}, and every value comes from that one fiscal
+year, as reported in filings made on or before \code{to_date}. A fiscal
+year that has ended but whose 10-K was not yet filed is not used.
 
 Fallback XBRL tags are attempted automatically when a company uses a
-non-standard tag name for a concept. A courtesy pause of 0.5 seconds is
+non-standard tag name for a concept, or has switched tags over time. A
+concept with no fact for the selected fiscal year is \code{NA} rather than
+a value from an earlier year.
+
+Prices are the unadjusted close on or before \code{to_date}. Per-share
+values are put on the same share basis as that price when a stock split
+occurred between the 10-K filing and \code{to_date}. A courtesy pause of 0.5 seconds is
 inserted after the companyfacts API call to respect the SEC's rate limit
 of 10 requests per second.
 

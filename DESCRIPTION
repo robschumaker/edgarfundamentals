@@ -1,6 +1,6 @@
 Package: edgarfundamentals
 Title: Retrieve Fundamental Financial Data from SEC 'EDGAR'
-Version: 0.1.2
+Version: 0.1.3
 Authors@R: person(
     given   = "Robert P",
     family  = "Schumaker",

@@ -7,8 +7,9 @@
 #' @param symbol A character string containing the stock ticker symbol
 #'   (e.g. \code{"LLY"}). Case-insensitive.
 #' @param to_date A character string in \code{"YYYY-MM-DD"} format. The
-#'   function returns ratios from the most recent 10-K with a period end date
-#'   on or before this date. Defaults to today's date.
+#'   function returns ratios from the most recent 10-K that had been
+#'   \emph{filed} on or before this date, so results contain only information
+#'   that was public on that date. Defaults to today's date.
 #'
 #' @return A named numeric vector with the following elements:
 #' \describe{
@@ -22,24 +23,25 @@
 #'     shareholder capital.}
 #'   \item{ROA}{Return on Assets as a percentage (NetIncome / TotalAssets
 #'     * 100). A measure of how efficiently the company uses its assets.}
-#'   \item{DE}{Debt-to-Equity ratio (LongTermDebt / StockholdersEquity). A
+#'   \item{DE}{Debt-to-Equity ratio (long-term debt including its current
+#'     portion / StockholdersEquity). A
 #'     measure of financial leverage.}
 #'   \item{CurrentRatio}{Current Assets divided by Current Liabilities. A
 #'     measure of short-term liquidity; values above 1 indicate the company
 #'     can cover near-term obligations.}
-#'   \item{GrossMargin}{Gross Profit as a percentage of Revenue. Measures
+#'   \item{GrossMargin}{Gross Profit (or Revenue minus Cost of Revenue when
+#'     gross profit is not tagged) as a percentage of Revenue. Measures
 #'     pricing power and production efficiency.}
 #'   \item{OperatingMargin}{Operating Income as a percentage of Revenue.
 #'     Measures operational efficiency before interest and taxes.}
 #'   \item{NetMargin}{Net Income as a percentage of Revenue. Bottom-line
 #'     profitability after all expenses.}
-#'   \item{PE}{Price-to-Earnings ratio, computed by dividing the most recent
-#'     adjusted closing price (from Yahoo Finance via tidyquant) by EPS.
+#'   \item{PE}{Price-to-Earnings ratio, computed by dividing the closing price
+#'     on or before \code{to_date} (from Yahoo Finance via tidyquant) by EPS.
 #'     Returns \code{NA} if EPS is zero or negative.}
-#'   \item{PB}{Price-to-Book ratio, computed by dividing the most recent
-#'     adjusted closing price by Book Value per Share (StockholdersEquity /
-#'     SharesOutstanding). Returns \code{NA} if shares outstanding is zero
-#'     or unavailable.}
+#'   \item{PB}{Price-to-Book ratio, computed by dividing the closing price by
+#'     Book Value per Share (StockholdersEquity / SharesOutstanding). Returns
+#'     \code{NA} if shares outstanding is unavailable or equity is negative.}
 #'   \item{DIV}{Dividend Yield as a percentage (DividendsPerShareDeclared /
 #'     Price * 100). Returns \code{NA} if no dividend data is available.}
 #' }
@@ -47,12 +49,20 @@
 #' @details
 #' Financial statement values are extracted from XBRL-tagged 10-K filings via
 #' the SEC EDGAR companyfacts API
-#' (\url{https://data.sec.gov/api/xbrl/companyfacts/}). Because data comes
-#' from annual filings, ratios reflect the most recently completed fiscal year
-#' ending on or before \code{to_date}, not real-time values.
+#' (\url{https://data.sec.gov/api/xbrl/companyfacts/}). Results are point in
+#' time: the function finds the most recent fiscal year whose 10-K was filed
+#' on or before \code{to_date}, and every value comes from that one fiscal
+#' year, as reported in filings made on or before \code{to_date}. A fiscal
+#' year that has ended but whose 10-K was not yet filed is not used.
 #'
 #' Fallback XBRL tags are attempted automatically when a company uses a
-#' non-standard tag name for a concept. A courtesy pause of 0.5 seconds is
+#' non-standard tag name for a concept, or has switched tags over time. A
+#' concept with no fact for the selected fiscal year is \code{NA} rather than
+#' a value from an earlier year.
+#'
+#' Prices are the unadjusted close on or before \code{to_date}. Per-share
+#' values are put on the same share basis as that price when a stock split
+#' occurred between the 10-K filing and \code{to_date}. A courtesy pause of 0.5 seconds is
 #' inserted after the companyfacts API call to respect the SEC's rate limit
 #' of 10 requests per second.
 #'
@@ -70,71 +80,72 @@
 #' get_fundamentals("JNJ")
 #' }
 #'
-#' @importFrom httr GET add_headers content
+#' @importFrom httr GET add_headers content status_code
 #' @importFrom jsonlite fromJSON
-#' @importFrom dplyr filter arrange desc slice pull
 #' @importFrom tidyquant tq_get
 #' @export
 get_fundamentals <- function(symbol, to_date = as.character(Sys.Date())) {
 
+  to_date <- as.character(as.Date(to_date))
   cik     <- get_cik(symbol)
   cik.pad <- pad_cik(cik)
 
-  facts <- httr::GET(
-    paste0("https://data.sec.gov/api/xbrl/companyfacts/CIK", cik.pad, ".json"),
-    edgar_ua()
-  ) |>
-    httr::content(as = "text", encoding = "UTF-8") |>
-    jsonlite::fromJSON()
+  facts <- edgar_get_json(
+    paste0("https://data.sec.gov/api/xbrl/companyfacts/CIK", cik.pad, ".json"))
 
   Sys.sleep(0.5)
 
-  # Extract raw values -- each concept tries a primary tag then fallback tags
-  eps        <- latest_10k(facts, "EarningsPerShareDiluted",
-                           fallback_tags = "EarningsPerShareBasic",
-                           unit = "USD/shares", to_date = to_date)
+  fy <- fiscal_year_end(facts, to_date)
+  if (is.na(fy)) {
+    warning("No 10-K filed on or before ", to_date, " for ", symbol, call. = FALSE)
+  }
 
-  net.income <- latest_10k(facts, "NetIncomeLoss",
-                           fallback_tags = c("ProfitLoss", "NetIncome"),
-                           unit = "USD", to_date = to_date)
+  flow  <- function(tags, unit = "USD") fy_value(facts, tags, unit, to_date, fy, duration = TRUE)
+  stock <- function(tags, unit = "USD") fy_value(facts, tags, unit, to_date, fy, duration = FALSE)
 
-  revenue    <- latest_10k(facts, "RevenueFromContractWithCustomerExcludingAssessedTax",
-                           fallback_tags = c("Revenues", "SalesRevenueNet",
-                                             "SalesRevenueGoodsNet"),
-                           unit = "USD", to_date = to_date)
+  # Each concept tries a primary tag then fallback tags, all for the same fiscal year
+  eps.f      <- flow(c("EarningsPerShareDiluted", "EarningsPerShareBasic"), "USD/shares")
+  net.income <- flow(c("NetIncomeLoss", "ProfitLoss"))$val
+  # Revenues (the total) before contract revenue, which excludes items such as
+  # alliance and royalty income (PFE reports both and they differ by billions).
+  revenue    <- flow(c("Revenues",
+                       "RevenueFromContractWithCustomerExcludingAssessedTax",
+                       "SalesRevenueNet", "SalesRevenueGoodsNet",
+                       "RevenueFromContractWithCustomerIncludingAssessedTax"))$val
+  equity     <- stock(c("StockholdersEquity",
+                        "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"))$val
 
-  equity     <- latest_10k(facts, "StockholdersEquity",
-                           fallback_tags = "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest",
-                           unit = "USD", to_date = to_date)
+  # Total long-term debt including its current portion. Many filers stopped tagging
+  # LongTermDebt and report the noncurrent and current pieces separately.
+  debt <- stock(c("LongTermDebt",
+                  "LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities"))$val
+  if (is.na(debt)) {
+    noncurrent <- stock(c("LongTermDebtNoncurrent", "LongTermDebtAndCapitalLeaseObligations"))$val
+    current    <- stock(c("LongTermDebtCurrent", "LongTermDebtAndCapitalLeaseObligationsCurrent"))$val
+    debt <- if (!is.na(noncurrent)) noncurrent + ifelse(is.na(current), 0, current) else NA_real_
+  }
+  if (is.na(debt)) debt <- stock("LongTermNotesPayable")$val
 
-  debt       <- latest_10k(facts, "LongTermDebt",
-                           fallback_tags = c("LongTermDebtNoncurrent", "LongTermNotesPayable"),
-                           unit = "USD", to_date = to_date)
+  assets         <- stock("Assets")$val
+  current.assets <- stock("AssetsCurrent")$val
+  current.liab   <- stock("LiabilitiesCurrent")$val
+  gross.profit   <- flow("GrossProfit")$val
+  if (is.na(gross.profit) && !is.na(revenue)) {
+    # Many filers (e.g. LLY, PFE) never tag GrossProfit; derive it from cost of revenue.
+    cost <- flow(c("CostOfGoodsAndServicesSold", "CostOfRevenue", "CostOfGoodsSold"))$val
+    if (!is.na(cost)) gross.profit <- revenue - cost
+  }
+  operating.inc  <- flow("OperatingIncomeLoss")$val
+  shares.f       <- fy_shares(facts, to_date, fy)
+  div.f          <- flow(c("CommonStockDividendsPerShareDeclared",
+                           "CommonStockDividendsPerShareCashPaid"), "USD/shares")
 
-  assets     <- latest_10k(facts, "Assets",
-                           unit = "USD", to_date = to_date)
-
-  current.assets <- latest_10k(facts, "AssetsCurrent",
-                                unit = "USD", to_date = to_date)
-
-  current.liab   <- latest_10k(facts, "LiabilitiesCurrent",
-                                unit = "USD", to_date = to_date)
-
-  gross.profit   <- latest_10k(facts, "GrossProfit",
-                                unit = "USD", to_date = to_date)
-
-  operating.inc  <- latest_10k(facts, "OperatingIncomeLoss",
-                                unit = "USD", to_date = to_date)
-
-  shares.out     <- latest_10k(facts, "CommonStockSharesOutstanding",
-                                fallback_tags = c("CommonStockSharesIssuedAndOutstanding",
-                                                  "EntityCommonStockSharesOutstanding"),
-                                unit = "shares", to_date = to_date)
-
-  div.per.share  <- latest_10k(facts, "CommonStockDividendsPerShareDeclared",
-                                fallback_tags = c("CommonStockDividendsPerShareCashPaid",
-                                                  "DividendsCommonStockCash"),
-                                unit = "USD/shares", to_date = to_date)
+  # Put per-share figures on the share basis of to_date: undo nothing for splits
+  # before the 10-K was filed (filings restate those), adjust for splits after it.
+  basis <- function(f) if (is.na(f$filed)) 1 else split_factor(symbol, f$filed, to_date)
+  eps           <- eps.f$val * basis(eps.f)
+  div.per.share <- div.f$val * basis(div.f)
+  shares.out    <- shares.f$val / basis(shares.f)
 
   # Compute derived ratios
   roe <- if (!is.na(net.income) && !is.na(equity) && equity != 0)
@@ -158,17 +169,12 @@ get_fundamentals <- function(symbol, to_date = as.character(Sys.Date())) {
   net.margin <- if (!is.na(net.income) && !is.na(revenue) && revenue != 0)
     round(net.income / revenue * 100, 2) else NA_real_
 
-  # PE, PB, and DIV all use the most recent adjusted price from tidyquant
-  prices <- suppressMessages(
-    tidyquant::tq_get(symbol,
-                      from = as.character(as.Date(to_date) - 7),
-                      to   = as.character(to_date))
-  )
-  price <- if (nrow(prices) > 0) prices$adjusted[nrow(prices)] else NA_real_
+  # PE, PB, and DIV use the closing price on or just before to_date
+  price <- price_on(symbol, to_date)
 
-  pe  <- if (!is.na(eps) && eps > 0) round(price / eps, 2) else NA_real_
+  pe  <- if (!is.na(eps) && eps > 0 && !is.na(price)) round(price / eps, 2) else NA_real_
 
-  pb  <- if (!is.na(shares.out) && shares.out > 0 && !is.na(equity))
+  pb  <- if (!is.na(shares.out) && shares.out > 0 && !is.na(equity) && equity > 0 && !is.na(price))
     round(price / (equity / shares.out), 2) else NA_real_
 
   div <- if (!is.na(div.per.share) && !is.na(price) && price > 0)

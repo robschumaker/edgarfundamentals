@@ -54,13 +54,8 @@ get_filing_history <- function(symbol, form_type = "10-K", n = 5) {
   cik     <- get_cik(symbol)
   cik.pad <- pad_cik(cik)
 
-  response <- httr::GET(
-    paste0("https://data.sec.gov/submissions/CIK", cik.pad, ".json"),
-    edgar_ua()
-  )
-
-  submissions <- httr::content(response, as = "text", encoding = "UTF-8") |>
-    jsonlite::fromJSON()
+  submissions <- edgar_get_json(
+    paste0("https://data.sec.gov/submissions/CIK", cik.pad, ".json"))
 
   Sys.sleep(0.5)
 

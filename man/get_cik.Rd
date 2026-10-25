@@ -8,7 +8,8 @@ get_cik(symbol)
 }
 \arguments{
 \item{symbol}{A character string containing the stock ticker symbol
-(e.g. \code{"AAPL"}). Case-insensitive.}
+(e.g. \code{"AAPL"}). Case-insensitive. Share-class tickers may use
+a dot or a dash (\code{"BRK.B"} or \code{"BRK-B"}).}
 }
 \value{
 A character string containing the CIK number (without zero-padding).
@@ -22,7 +23,7 @@ subsequent EDGAR API calls.
 \details{
 Data is retrieved from \url{https://www.sec.gov/files/company_tickers.json},
 a publicly maintained mapping file updated by the SEC. No API key is
-required.
+required. The file is downloaded once per R session and cached.
 
 The SEC requests that automated tools identify themselves via a User-Agent
 header. Set your identifier once per session with:

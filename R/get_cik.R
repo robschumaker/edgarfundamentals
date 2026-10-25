@@ -6,14 +6,15 @@
 #' subsequent EDGAR API calls.
 #'
 #' @param symbol A character string containing the stock ticker symbol
-#'   (e.g. \code{"AAPL"}). Case-insensitive.
+#'   (e.g. \code{"AAPL"}). Case-insensitive. Share-class tickers may use
+#'   a dot or a dash (\code{"BRK.B"} or \code{"BRK-B"}).
 #'
 #' @return A character string containing the CIK number (without zero-padding).
 #'
 #' @details
 #' Data is retrieved from \url{https://www.sec.gov/files/company_tickers.json},
 #' a publicly maintained mapping file updated by the SEC. No API key is
-#' required.
+#' required. The file is downloaded once per R session and cached.
 #'
 #' The SEC requests that automated tools identify themselves via a User-Agent
 #' header. Set your identifier once per session with:
@@ -28,19 +29,18 @@
 #'
 #' @importFrom httr GET add_headers content
 #' @importFrom jsonlite fromJSON
-#' @importFrom dplyr filter pull
 #' @export
 get_cik <- function(symbol) {
-  tickers.raw <- httr::GET(
-    "https://www.sec.gov/files/company_tickers.json",
-    edgar_ua()
-  ) |>
-    httr::content(as = "text", encoding = "UTF-8") |>
-    jsonlite::fromJSON()
+  tickers.df <- .edgar_cache$tickers
+  if (is.null(tickers.df)) {
+    tickers.raw <- edgar_get_json("https://www.sec.gov/files/company_tickers.json")
+    tickers.df  <- do.call(rbind, lapply(tickers.raw, as.data.frame))
+    .edgar_cache$tickers <- tickers.df
+  }
 
-  tickers.df <- do.call(rbind, lapply(tickers.raw, as.data.frame))
-
-  match.row <- tickers.df[toupper(tickers.df$ticker) == toupper(symbol), ]
+  # SEC writes share classes with a dash (BRK-B); users often type a dot (BRK.B).
+  key <- gsub(".", "-", toupper(trimws(symbol)), fixed = TRUE)
+  match.row <- tickers.df[toupper(tickers.df$ticker) == key, ]
 
   if (nrow(match.row) == 0) {
     stop("Ticker '", symbol, "' not found in SEC EDGAR. ",
