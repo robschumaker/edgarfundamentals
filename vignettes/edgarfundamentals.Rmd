@@ -58,7 +58,8 @@ get_cik("LMT")   # Lockheed Martin
 ## Fundamentals for a Single Stock
 
 `get_fundamentals()` returns a named vector of key financial ratios derived
-from the most recent 10-K filing on or before `to_date`.
+from the most recent 10-K that had been *filed* on or before `to_date`, so the
+result contains only information that was public on that date.
 
 ```{r single}
 get_fundamentals("LLY", to_date = "2024-12-31")
@@ -83,10 +84,13 @@ The returned vector contains:
 | `PB` | Price-to-Book ratio |
 | `DIV` | Dividend Yield (%) |
 
-Because ratios come from annual 10-K filings, they reflect the most recently
-completed fiscal year -- not real-time values. The PE ratio is the only
-computed value that uses a live market price (via Yahoo Finance), so it will
-change daily even when the underlying 10-K data does not.
+Because ratios come from annual 10-K filings, they reflect the most recent
+fiscal year whose 10-K was public on `to_date` -- not real-time values. Every
+value is taken from that one fiscal year, so a concept the company did not
+report that year is `NA` rather than a figure from an earlier year. PE, PB and
+DIV use the closing price on or just before `to_date` (via Yahoo Finance), so
+with the default `to_date` they change daily even when the underlying 10-K
+data does not.
 
 ## Fundamentals for a Portfolio
 
@@ -163,8 +167,10 @@ in rare cases a ratio may still be `NA`. When this occurs, verifying the
 company's most recent 10-K directly on `edgar.sec.gov` will confirm whether
 the data exists under a different tag name.
 
-Additionally, EDGAR does not provide market-based ratios directly. Price-to-Book
-and Dividend Yield both require a current share price, which comes from Yahoo
-Finance via `tidyquant`. This means PE, PB, and DIV all reflect today's price
-against the most recent annual filing data, which is standard practice for
-trailing ratios.
+Additionally, EDGAR does not provide market-based ratios directly. PE,
+Price-to-Book and Dividend Yield all require a share price, which comes from
+Yahoo Finance via `tidyquant`. The package uses the unadjusted closing price on
+or just before `to_date` against the latest annual filing available on that
+date, which is standard practice for trailing ratios. When a stock split falls
+between the 10-K and `to_date`, per-share figures are put on the same share
+basis as the price.

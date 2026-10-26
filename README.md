@@ -85,8 +85,9 @@ is not tracked in version control.
 
 All financial statement data comes from the SEC EDGAR XBRL API
 (`data.sec.gov`), specifically the `companyfacts` endpoint. Ratios reflect
-the most recently completed fiscal year from 10-K filings. PE, PB, and DIV
-additionally use current market prices from Yahoo Finance via `tidyquant`.
+the most recent fiscal year whose 10-K had been filed on or before `to_date`,
+so results are point in time. PE, PB, and DIV additionally use the closing
+price on or before `to_date` from Yahoo Finance via `tidyquant`.
 
 ## License
 
